@@ -46,11 +46,11 @@ class ActWrapper(object):
     def __call__(self, *args, **kwargs):
         return self._act(*args, **kwargs)
 
-    def step(self, observation, **kwargs):
+    def step(self, observation, sample_probs, **kwargs):
         # DQN doesn't use RNNs so we ignore states and masks
         kwargs.pop('S', None)
         kwargs.pop('M', None)
-        return self._act([observation], **kwargs), None, None, None
+        return self._act([observation],sample_probs, **kwargs), None, None, None
 
     def save_act(self, path=None):
         """Save model to a pickle located at `path`"""
@@ -240,6 +240,7 @@ def learn(env,
     episode_rewards = [0.0]
     saved_mean_reward = None
     obs = env.reset()
+    sample_probs = env.envs[0].get_action_probabilities()
     reset = True
 
     with tempfile.TemporaryDirectory() as td:
@@ -276,17 +277,20 @@ def learn(env,
                 kwargs['reset'] = reset
                 kwargs['update_param_noise_threshold'] = update_param_noise_threshold
                 kwargs['update_param_noise_scale'] = True
-            action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
+            action = act(np.array(obs)[None], sample_probs, update_eps=update_eps, **kwargs)[0]
             env_action = action
             reset = False
             new_obs, rew, done, _ = env.step(env_action)
+            new_sample_probs = env.envs[0].get_action_probabilities()
             # Store transition in the replay buffer.
             replay_buffer.add(obs, action, rew, new_obs, float(done))
             obs = new_obs
+            sample_probs = new_sample_probs
 
             episode_rewards[-1] += rew
             if done:
                 obs = env.reset()
+                sample_probs = env.envs[0].get_action_probabilities()
                 episode_rewards.append(0.0)
                 reset = True
 
