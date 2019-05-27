@@ -195,7 +195,7 @@ def build_act(make_obs_ph, q_func, num_actions, scope="deepq", reuse=None):
         output_actions = tf.cond(stochastic_ph, lambda: stochastic_actions, lambda: deterministic_actions)
         update_eps_expr = eps.assign(tf.cond(update_eps_ph >= 0, lambda: update_eps_ph, lambda: eps))
         _act = U.function(inputs=[observations_ph, distribution_ph, stochastic_ph, update_eps_ph],
-                         outputs=output_actions,
+                         outputs=(output_actions, q_values),
                          givens={update_eps_ph: -1.0, stochastic_ph: True},
                          updates=[update_eps_expr])
         def act(ob, sampling_prob, stochastic=True, update_eps=-1):
@@ -313,6 +313,7 @@ def build_act_with_param_noise(make_obs_ph, q_func, num_actions, scope="deepq", 
                          outputs=(output_actions, q_values),
                          givens={update_eps_ph: -1.0, stochastic_ph: True, reset_ph: False, update_param_noise_threshold_ph: False, update_param_noise_scale_ph: False},
                          updates=updates)
+
         def act(ob, reset=False, update_param_noise_threshold=False, update_param_noise_scale=False, stochastic=True, update_eps=-1):
             return _act(ob, stochastic, update_eps, reset, update_param_noise_threshold, update_param_noise_scale)
         return act
